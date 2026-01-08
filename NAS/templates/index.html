@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📁 Smart Document Organizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #007AFF;
+        }
+
+        .status {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34C759;
+        }
+
+        .files-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .file-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .file-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .file-icon {
+            font-size: 24px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex-grow: 1;
+        }
+
+        .file-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .file-preview {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: 'SF Mono', Consolas, monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #444;
+            border-left: 3px solid #007AFF;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .suggestions-title {
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .suggestions {
+            display: grid;
+            gap: 12px;
+        }
+
+        .suggestion {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .suggestion:hover {
+            background: #e3f2fd;
+            border-color: #007AFF;
+            transform: translateX(4px);
+        }
+
+        .suggestion.selected {
+            background: #007AFF;
+            color: white;
+            border-color: #005bb5;
+        }
+
+        .suggestion-rank {
+            background: #007AFF;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .suggestion.selected .suggestion-rank {
+            background: white;
+            color: #007AFF;
+        }
+
+        .suggestion-content {
+            flex-grow: 1;
+        }
+
+        .suggestion-folder {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-reason {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .suggestion-confidence {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005bb5;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #444;
+        }
+
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+
+        .manual-select {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .manual-select select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state h2 {
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .inbox-path {
+            font-family: 'SF Mono', Consolas, monospace;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-top: 16px;
+            display: inline-block;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .status {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .suggestions {
+                grid-template-columns: 1fr;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 Smart Document Organizer</h1>
+            <p>Lokale KI-basierte Dokumenten-Ablage für deinen Mac mini</p>
+            
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span id="pending-count">{{ pending_files|length }} Dateien warten</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>{{ target_folders|length }} Zielordner verfügbar</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    <span>Ollama LLM aktiv</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="success-message" id="success-message"></div>
+
+        <div class="files-grid" id="files-grid">
+            {% if pending_files %}
+                {% for filename, file_info in pending_files.items() %}
+                <div class="file-card" data-filename="{{ filename }}">
+                    <div class="file-header">
+                        <span class="file-icon">
+                            {% if filename.endswith('.pdf') %}📄
+                            {% elif filename.endswith('.docx') or filename.endswith('.doc') %}📝
+                            {% elif filename.endswith('.txt') or filename.endswith('.md') %}📰
+                            {% else %}📋{% endif %}
+                        </span>
+                        <div class="file-name">{{ filename }}</div>
+                        <div class="file-time">
+                            {{ file_info.timestamp.split('T')[1].split('.')[0] }}
+                        </div>
+                    </div>
+
+                    <div class="file-preview">{{ file_info.text_preview }}</div>
+
+                    <div class="suggestions-title">🧠 KI-Vorschläge:</div>
+                    <div class="suggestions">
+                        {% for suggestion in file_info.suggestions %}
+                        <div class="suggestion" data-folder="{{ suggestion.folder }}" onclick="selectSuggestion(this, '{{ filename }}', '{{ suggestion.folder }}')">
+                            <div class="suggestion-rank">{{ loop.index }}</div>
+                            <div class="suggestion-content">
+                                <div class="suggestion-folder">📁 {{ suggestion.folder }}</div>
+                                <div class="suggestion-reason">{{ suggestion.reason }}</div>
+                            </div>
+                            <div class="suggestion-confidence">{{ "%.0f"|format(suggestion.confidence * 100) }}%</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="moveFile('{{ filename }}')" id="move-btn-{{ filename }}" disabled>
+                            Verschieben
+                        </button>
+                        <button class="btn btn-secondary" onclick="toggleManualSelect('{{ filename }}')">
+                            Manuell wählen
+                        </button>
+                    </div>
+
+                    <div class="manual-select" id="manual-{{ filename }}" style="display: none;">
+                        <select id="manual-select-{{ filename }}" onchange="selectManualFolder('{{ filename }}', this.value)">
+                            <option value="">-- Ordner auswählen --</option>
+                            {% for folder in target_folders %}
+                            <option value="{{ folder }}">📁 {{ folder }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>🎉 Keine Dateien zu bearbeiten</h2>
+                    <p>Wirf neue Dateien in den Inbox-Ordner, um sie automatisch zu organisieren!</p>
+                    <div class="inbox-path">~/NAS/inbox/</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        let selectedFolders = {};
+        
+        function selectSuggestion(element, filename, folder) {
+            // Entferne andere Selektionen für diese Datei
+            const card = element.closest('.file-card');
+            card.querySelectorAll('.suggestion').forEach(s => s.classList.remove('selected'));
+            
+            // Markiere aktuelle Auswahl
+            element.classList.add('selected');
+            selectedFolders[filename] = folder;
+            
+            // Aktiviere Verschieben-Button
+            document.getElementById(`move-btn-${filename}`).disabled = false;
+            
+            // Verstecke manuell Auswahl
+            document.getElementById(`manual-${filename}`).style.display = 'none';
+        }
+        
+        function selectManualFolder(filename, folder) {
+            if (folder) {
+                selectedFolders[filename] = folder;
+                document.getElementById(`move-btn-${filename}`).disabled = false;
+                
+                // Entferne Suggestion-Selektionen
+                const card = document.querySelector(`[data-filename="${filename}"]`);
+                card.querySelectorAll('.suggestion').forEach(s => s.classList.remove('selected'));
+            }
+        }
+        
+        function toggleManualSelect(filename) {
+            const manual = document.getElementById(`manual-${filename}`);
+            manual.style.display = manual.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function moveFile(filename) {
+            const folder = selectedFolders[filename];
+            if (!folder) return;
+            
+            const button = document.getElementById(`move-btn-${filename}`);
+            const originalText = button.textContent;
+            button.textContent = 'Verschiebe...';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/api/move_file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: filename,
+                        folder: folder
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Zeige Erfolg
+                    showSuccess(`✅ ${filename} wurde nach ${folder} verschoben`);
+                    
+                    // Entferne Datei-Karte
+                    const card = document.querySelector(`[data-filename="${filename}"]`);
+                    card.style.opacity = '0.5';
+                    card.style.transform = 'scale(0.95)';
+                    
+                    setTimeout(() => {
+                        card.remove();
+                        updatePendingCount();
+                        
+                        // Zeige Empty State wenn keine Dateien mehr da
+                        if (document.querySelectorAll('.file-card').length === 0) {
+                            document.getElementById('files-grid').innerHTML = `
+                                <div class="empty-state">
+                                    <h2>🎉 Alle Dateien organisiert!</h2>
+                                    <p>Wirf neue Dateien in den Inbox-Ordner für weitere Vorschläge.</p>
+                                    <div class="inbox-path">~/NAS/inbox/</div>
+                                </div>
+                            `;
+                        }
+                    }, 500);
+                    
+                } else {
+                    alert('Fehler: ' + result.error);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+                
+            } catch (error) {
+                alert('Fehler beim Verschieben: ' + error.message);
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        function updatePendingCount() {
+            const count = document.querySelectorAll('.file-card').length;
+            document.getElementById('pending-count').textContent = `${count} Dateien warten`;
+        }
+        
+        // Auto-Refresh alle 5 Sekunden
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                
+                if (status.pending_count > document.querySelectorAll('.file-card').length) {
+                    // Neue Dateien verfügbar - Seite neu laden
+                    location.reload();
+                }
+            } catch (error) {
+                console.log('Status-Check fehlgeschlagen:', error);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📂 Smart Ablage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1c1c1e;
+            color: #f2f2f7;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #2c2c2e;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #38383a;
+        }
+
+        .header {
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #f2f2f7;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #98989d;
+            font-weight: 400;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed #48484a;
+            border-radius: 12px;
+            padding: 60px 40px;
+            margin: 40px 0;
+            background: #1c1c1e;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .drop-zone:hover {
+            border-color: #0a84ff;
+            background: #1a1a2e;
+        }
+
+        .drop-zone.dragover {
+            border-color: #0a84ff;
+            background: #16213e;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .drop-icon {
+            font-size: 48px;
+            opacity: 0.7;
+        }
+
+        .drop-text {
+            font-size: 18px;
+            font-weight: 500;
+            color: #f2f2f7;
+        }
+
+        .drop-subtext {
+            font-size: 14px;
+            color: #98989d;
+        }
+
+        .supported-formats {
+            font-size: 14px;
+            color: #98989d;
+            margin-top: 20px;
+        }
+
+        /* Analysis State */
+        .analysis-state {
+            display: none;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .analysis-state.active {
+            display: block;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .analysis-text {
+            font-size: 18px;
+            color: #f2f2f7;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #48484a;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0a84ff, #30d158);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .analysis-details {
+            font-size: 14px;
+            color: #98989d;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Suggestions */
+        .suggestions {
+            display: none;
+        }
+
+        .suggestions.active {
+            display: block;
+        }
+
+        .suggestions-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 32px;
+            color: #f2f2f7;
+        }
+
+        .suggestion-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .suggestion-card {
+            background: #1c1c1e;
+            border: 2px solid #48484a;
+            border-radius: 12px;
+            padding: 20px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .suggestion-card:hover {
+            border-color: #0a84ff;
+            box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .suggestion-card.best {
+            border-color: #30d158;
+            background: linear-gradient(135deg, #1a2f1a, #1c1c1e);
+        }
+
+        .suggestion-card.possible {
+            border-color: #ff9f0a;
+        }
+
+        .suggestion-card.unlikely {
+            border-color: #48484a;
+            opacity: 0.7;
+        }
+
+        .suggestion-card.new {
+            border-color: #ff9f0a;
+            background: linear-gradient(135deg, #2a1f0a, #1c1c1e);
+            position: relative;
+        }
+
+        .suggestion-card.new::before {
+            content: '✨';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 16px;
+        }
+
+        .card-folder-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .card-confidence {
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .card-confidence.best { color: #30d158; }
+        .card-confidence.possible { color: #ff9f0a; }
+        .card-confidence.unlikely { color: #98989d; }
+        .card-confidence.new { color: #ff9f0a; font-weight: 600; }
+
+        .card-reason {
+            font-size: 12px;
+            color: #98989d;
+            font-style: italic;
+            line-height: 1.4;
+        }
+
+        .manual-selection {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #48484a;
+        }
+
+        .manual-button {
+            background: none;
+            border: 1px solid #48484a;
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: #98989d;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .manual-button:hover {
+            border-color: #0a84ff;
+            color: #0a84ff;
+        }
+
+        /* Success State */
+        .success-state {
+            display: none;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .success-state.active {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: #30d158;
+            margin-bottom: 16px;
+        }
+
+        .success-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #f2f2f7;
+        }
+
+        .success-path {
+            background: #1c1c1e;
+            border: 1px solid #48484a;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+            font-family: Monaco, 'SF Mono', monospace;
+            font-size: 14px;
+            color: #f2f2f7;
+            word-break: break-all;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #0a84ff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0066cc;
+        }
+
+        .btn-secondary {
+            background: #2c2c2e;
+            color: #f2f2f7;
+            border: 1px solid #48484a;
+        }
+
+        .btn-secondary:hover {
+            background: #3a3a3c;
+        }
+
+        /* Hidden file input */
+        .file-input {
+            display: none;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+                margin: 10px;
+            }
+
+            .drop-zone {
+                padding: 40px 20px;
+            }
+
+            .suggestion-cards {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .loading {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">📂 Smart Ablage</h1>
+            <p class="subtitle">Dateien einfach ablegen & zuordnen</p>
+        </div>
+
+        <!-- Initial Drop Zone -->
+        <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-content">
+                <div class="drop-icon">⬇️</div>
+                <div class="drop-text">Datei hier ablegen</div>
+                <div class="drop-subtext">oder klicken zum Auswählen</div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png">
+        </div>
+
+        <div class="supported-formats">
+            Unterstützt: PDF · DOCX · Bilder · TXT
+        </div>
+
+        <!-- Analysis State -->
+        <div id="analysisState" class="analysis-state">
+            <div class="file-info">
+                <span>📄</span>
+                <span id="fileName">Rechnung_MediaMarkt.pdf</span>
+            </div>
+            <div class="analysis-text">Analysiere Inhalt…</div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="analysis-details" id="analysisDetails">
+                <span>📊 Betrag erkannt</span>
+                <span>📅 Datum erkannt</span>
+                <span>🏢 Firmenname erkannt</span>
+            </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div id="suggestions" class="suggestions">
+            <h2 class="suggestions-title">Wohin soll die Datei abgelegt werden?</h2>
+            <div class="suggestion-cards" id="suggestionCards">
+                <!-- Cards will be populated by JavaScript -->
+            </div>
+            <div class="manual-selection">
+                <button class="manual-button" onclick="showManualSelection()">
+                    Anderen Ordner auswählen…
+                </button>
+            </div>
+        </div>
+
+        <!-- Success State -->
+        <div id="successState" class="success-state">
+            <div class="success-icon">✅</div>
+            <h2 class="success-title">Datei erfolgreich abgelegt</h2>
+            <div class="success-path" id="successPath">
+                📂 ~/NAS/ablage/Rechnungen/Rechnung_MediaMarkt.pdf
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="resetForNextFile()">
+                    Nächste Datei ablegen
+                </button>
+                <button class="btn btn-secondary" onclick="undoLastAction()" id="undoBtn">
+                    Rückgängig (10s)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let currentFile = null;
+        let analysisProgress = 0;
+        let undoTimer = null;
+
+        // DOM elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const analysisState = document.getElementById('analysisState');
+        const suggestions = document.getElementById('suggestions');
+        const successState = document.getElementById('successState');
+        const fileName = document.getElementById('fileName');
+        const progressFill = document.getElementById('progressFill');
+        const analysisDetails = document.getElementById('analysisDetails');
+        const suggestionCards = document.getElementById('suggestionCards');
+        const successPath = document.getElementById('successPath');
+        const undoBtn = document.getElementById('undoBtn');
+
+        // Check for existing files on page load
+        window.addEventListener('load', checkForExistingFiles);
+        
+        // Drag & Drop handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+            dropZone.querySelector('.drop-text').textContent = 'Datei loslassen zum Analysieren';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+            dropZone.querySelector('.drop-text').textContent = 'Datei hier ablegen';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            currentFile = file;
+            fileName.textContent = file.name;
+            
+            // Hide drop zone, show analysis
+            dropZone.style.display = 'none';
+            analysisState.classList.add('active');
+            
+            // Start real analysis
+            analyzeFile(file.name);
+        }
+
+        function analyzeFile(filename) {
+            analysisProgress = 0;
+            
+            // Start progress animation
+            const progressInterval = setInterval(() => {
+                analysisProgress += Math.random() * 10 + 2;
+                if (analysisProgress >= 95) {
+                    analysisProgress = 95;
+                }
+                progressFill.style.width = analysisProgress + '%';
+            }, 150);
+
+            // Call real API
+            fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                
+                if (data.success) {
+                    setTimeout(() => showSuggestions(data.suggestions), 500);
+                } else {
+                    alert('Fehler bei der Analyse: ' + data.error);
+                    resetForNextFile();
+                }
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                console.error('Analyse-Fehler:', error);
+                alert('Verbindungsfehler bei der Analyse');
+                resetForNextFile();
+            });
+        }
+
+        function showSuggestions(suggestionsData) {
+            analysisState.classList.remove('active');
+            suggestions.classList.add('active');
+            
+            // Prüfe ob es neue Ordner-Vorschläge sind
+            const hasNewFolders = suggestionsData.some(s => s.is_new);
+            
+            if (hasNewFolders) {
+                // Zeige "Kein passender Ordner"-Modus
+                document.querySelector('.suggestions-title').textContent = '🚨 Kein passender Ordner gefunden';
+                document.querySelector('.suggestions-title').innerHTML = `
+                    <div style="color: #ff9f0a; margin-bottom: 16px;">🚨 Kein passender Ordner gefunden</div>
+                    <div style="font-size: 16px; font-weight: normal; color: #98989d;">Hier sind 3 Vorschläge für neue Ordner:</div>
+                `;
+            } else {
+                // Standard-Titel
+                document.querySelector('.suggestions-title').textContent = 'Wohin soll die Datei abgelegt werden?';
+            }
+            
+            // Convert API suggestions to UI format
+            const formattedSuggestions = suggestionsData.map((sugg, index) => {
+                let confidence = 'unlikely';
+                let confidenceText = '△ eher selten';
+                
+                if (sugg.is_new) {
+                    // Neue Ordner: andere Darstellung
+                    confidence = 'new';
+                    confidenceText = '✨ neuer Ordner';
+                    return {
+                        folder: sugg.folder,
+                        folder_path: sugg.folder_path,
+                        confidence: confidence,
+                        confidenceText: confidenceText,
+                        reason: sugg.reason,
+                        is_new: true
+                    };
+                } else {
+                    // Bestehende Ordner
+                    if (sugg.confidence >= 0.7) {
+                        confidence = 'best';
+                        confidenceText = '✔ sehr passend';
+                    } else if (sugg.confidence >= 0.4) {
+                        confidence = 'possible';
+                        confidenceText = '○ möglich';
+                    }
+                    
+                    return {
+                        folder: '🗂 ' + sugg.folder,
+                        confidence: confidence,
+                        confidenceText: confidenceText,
+                        reason: sugg.reasoning || sugg.reason || 'KI-Vorschlag'
+                    };
+                }
+            });
+            
+            populateSuggestions(formattedSuggestions);
+        }
+
+        function populateSuggestions(suggestionsData) {
+            suggestionCards.innerHTML = '';
+            
+            suggestionsData.forEach((suggestion, index) => {
+                const card = document.createElement('div');
+                card.className = `suggestion-card ${suggestion.confidence}`;
+                card.onclick = () => selectFolder(suggestion.folder, index);
+                
+                card.innerHTML = `
+                    <div class="card-folder-name">${suggestion.folder}</div>
+                    <div class="card-confidence ${suggestion.confidence}">${suggestion.confidenceText}</div>
+                    <div class="card-reason">"${suggestion.reason}"</div>
+                `;
+                
+                // Speichere Suggestion-Daten für spätere Verwendung
+                card._suggestionData = suggestion;
+                
+                suggestionCards.appendChild(card);
+            });
+        }
+
+        function selectFolder(folderName, index) {
+            // Show loading state
+            const cards = suggestionCards.children;
+            for (let card of cards) {
+                card.style.opacity = '0.5';
+                card.style.pointerEvents = 'none';
+            }
+            cards[index].innerHTML += '<div style="margin-top: 10px;">Verschiebe...</div>';
+            
+            // Send to backend
+            const suggestionData = suggestionCards.children[index]._suggestionData;
+            
+            fetch('/api/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    filename: currentFile.name, 
+                    folder: suggestionData.is_new ? {
+                        folder_path: suggestionData.folder_path,
+                        is_new: true
+                    } : folderName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide suggestions, show success
+                    suggestions.classList.remove('active');
+                    successState.classList.add('active');
+                    
+                    // Update success path
+                    successPath.textContent = `📂 ${data.target_path}`;
+                    
+                    // Start undo timer
+                    startUndoTimer();
+                } else {
+                    alert('Fehler beim Verschieben: ' + data.error);
+                    resetForNextFile();
+                }
+            })
+            .catch(error => {
+                console.error('Verschiebe-Fehler:', error);
+                alert('Verbindungsfehler beim Verschieben');
+                resetForNextFile();
+            });
+        }
+
+        function startUndoTimer() {
+            let timeLeft = 10;
+            undoBtn.textContent = `Rückgängig (${timeLeft}s)`;
+            
+            undoTimer = setInterval(() => {
+                timeLeft--;
+                undoBtn.textContent = `Rückgängig (${timeLeft}s)`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(undoTimer);
+                    undoBtn.style.opacity = '0.5';
+                    undoBtn.disabled = true;
+                    undoBtn.textContent = 'Rückgängig (abgelaufen)';
+                }
+            }, 1000);
+        }
+
+        function undoLastAction() {
+            if (undoTimer) {
+                clearInterval(undoTimer);
+                // TODO: Implement undo logic
+                console.log('Undoing last action...');
+                resetForNextFile();
+            }
+        }
+
+        function resetForNextFile() {
+            // Reset all states
+            dropZone.style.display = 'block';
+            analysisState.classList.remove('active');
+            suggestions.classList.remove('active');
+            successState.classList.remove('active');
+            
+            // Reset form
+            fileInput.value = '';
+            currentFile = null;
+            
+            // Reset undo timer
+            if (undoTimer) {
+                clearInterval(undoTimer);
+                undoTimer = null;
+            }
+            undoBtn.disabled = false;
+            undoBtn.style.opacity = '1';
+            
+            // Reset drop zone text
+            dropZone.querySelector('.drop-text').textContent = 'Datei hier ablegen';
+        }
+
+        function checkForExistingFiles() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status check:', data);
+                    if (data.files && data.files.length > 0) {
+                        // Auto-process the first file found
+                        const firstFile = data.files[0];
+                        console.log('Processing file:', firstFile);
+                        currentFile = { name: firstFile };
+                        fileName.textContent = firstFile;
+                        
+                        // Skip drop zone, go directly to analysis
+                        dropZone.style.display = 'none';
+                        analysisState.classList.add('active');
+                        analyzeFile(firstFile);
+                    } else {
+                        console.log('No files found, showing drop zone');
+                        // Show empty drop zone
+                        dropZone.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.log('Keine vorhandenen Dateien oder Fehler:', error);
+                    // Show normal drop zone
+                    dropZone.style.display = 'block';
+                });
+        }
+
+        function showManualSelection() {
+            // TODO: Implement manual folder selection
+            alert('Manuelle Ordnerauswahl wird implementiert...');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (suggestions.classList.contains('active')) {
+                const cards = suggestionCards.children;
+                if (e.key >= '1' && e.key <= '3') {
+                    const index = parseInt(e.key) - 1;
+                    if (cards[index]) {
+                        cards[index].click();
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
