@@ -43,9 +43,17 @@ open http://localhost:8080
 
 ## 🧠 LLM Requirements
 
-- **Ollama** mit `qwen2.5:7b-instruct` oder `qwen2.5:3b-instruct`
+- **Ollama** mit `qwen2.5:7b-instruct` oder `qwen2.5:3b-instruct` (Standard)
 - Läuft komplett lokal (keine Cloud)
 - Antwortet immer in strukturiertem JSON
+
+Optional kannst du das Modell und die URL über Umgebungsvariablen steuern:
+
+```bash
+export OLLAMA_URL="http://localhost:11434/api/generate"
+export OLLAMA_MODEL="qwen2.5:7b-instruct"
+export OLLAMA_TIMEOUT=30
+```
 
 ## ⚡ Features
 
