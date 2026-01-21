@@ -27,9 +27,13 @@ class DocumentProcessor:
         self.inbox_path = self.nas_path / "inbox"
         self.ablage_path = self.nas_path / "ablage"
         self.processed_path = self.nas_path / "processed"
+        self.llm_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+        self.llm_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct")
+        self.llm_timeout = int(os.getenv("OLLAMA_TIMEOUT", "30"))
         
         # Ensure paths exist
         self.inbox_path.mkdir(parents=True, exist_ok=True)
+        self.ablage_path.mkdir(parents=True, exist_ok=True)
         self.processed_path.mkdir(parents=True, exist_ok=True)
         
         # Get available target folders
@@ -76,8 +80,10 @@ class DocumentProcessor:
         try:
             if file_path.suffix.lower() == '.pdf':
                 return self._extract_pdf(file_path)
-            elif file_path.suffix.lower() in ['.docx', '.doc']:
+            elif file_path.suffix.lower() == '.docx':
                 return self._extract_docx(file_path)
+            elif file_path.suffix.lower() == '.doc':
+                return f"DOC-Datei: {file_path.name}\nHinweis: .doc wird nicht unterstützt."
             elif file_path.suffix.lower() in ['.txt', '.md']:
                 return self._extract_txt(file_path)
             else:
@@ -93,7 +99,9 @@ class DocumentProcessor:
         with open(file_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
             for page in reader.pages[:3]:  # Nur erste 3 Seiten
-                text += page.extract_text() + "\n"
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
         
         # Begrenzen auf 2000 Zeichen für LLM
         return text[:2000] if text.strip() else f"PDF-Datei: {file_path.name}"
@@ -117,12 +125,21 @@ class DocumentProcessor:
             return content[:2000]
         except UnicodeDecodeError:
             # Fallback für andere Encodings
-            with open(file_path, 'r', encoding='iso-8859-1') as f:
-                content = f.read()
-            return content[:2000]
+            try:
+                with open(file_path, 'r', encoding='iso-8859-1') as f:
+                    content = f.read()
+                return content[:2000]
+            except Exception as e:
+                return f"Dateiname: {file_path.name}\nFehler beim Lesen: {str(e)}"
     
     def get_folder_suggestions(self, file_path, text_content):
         """Hole 3 Ordner-Vorschläge vom lokalen LLM"""
+        if not self.target_folders:
+            return [
+                {"folder": "Sonstiges", "reason": "Keine Zielordner gefunden", "confidence": 0.1},
+                {"folder": "Sonstiges", "reason": "Keine Zielordner gefunden", "confidence": 0.1},
+                {"folder": "Sonstiges", "reason": "Keine Zielordner gefunden", "confidence": 0.1},
+            ]
         
         # Erstelle Prompt mit Lern-Daten
         folder_hints = self._get_learning_hints(text_content.lower())
@@ -151,9 +168,9 @@ Antworte ausschließlich als JSON-Array:
 Sortiere nach Wahrscheinlichkeit (confidence 0.0-1.0)."""
 
         try:
-            response = requests.post('http://localhost:11434/api/generate',
+            response = requests.post(self.llm_url,
                 json={
-                    'model': 'llama3:8b',
+                    'model': self.llm_model,
                     'prompt': prompt,
                     'stream': False,
                     'options': {
@@ -161,7 +178,7 @@ Sortiere nach Wahrscheinlichkeit (confidence 0.0-1.0)."""
                         'top_p': 0.9
                     }
                 },
-                timeout=30
+                timeout=self.llm_timeout
             )
             
             if response.status_code == 200:
@@ -204,16 +221,22 @@ Sortiere nach Wahrscheinlichkeit (confidence 0.0-1.0)."""
             
             # Parse JSON
             suggestions = json.loads(response.strip())
+            if not isinstance(suggestions, list):
+                raise ValueError("LLM Antwort ist kein JSON-Array")
             
             # Validiere Format
             valid_suggestions = []
             for item in suggestions:
                 if isinstance(item, dict) and all(k in item for k in ['folder', 'reason', 'confidence']):
                     if item['folder'] in self.target_folders:
+                        try:
+                            confidence = float(item['confidence'])
+                        except (TypeError, ValueError):
+                            confidence = 0.0
                         valid_suggestions.append({
                             'folder': item['folder'],
                             'reason': str(item['reason'])[:100],
-                            'confidence': float(item['confidence'])
+                            'confidence': max(0.0, min(1.0, confidence))
                         })
             
             # Sortiere nach Confidence
@@ -289,6 +312,23 @@ Sortiere nach Wahrscheinlichkeit (confidence 0.0-1.0)."""
                 break
         
         return suggestions
+
+    def wait_for_file_ready(self, file_path, timeout=10, interval=0.2):
+        """Warte, bis eine Datei vollständig geschrieben ist."""
+        file_path = Path(file_path)
+        end_time = time.time() + timeout
+        last_size = -1
+        while time.time() < end_time:
+            try:
+                current_size = file_path.stat().st_size
+            except FileNotFoundError:
+                time.sleep(interval)
+                continue
+            if current_size == last_size and current_size > 0:
+                return True
+            last_size = current_size
+            time.sleep(interval)
+        return False
     
     def move_file(self, file_path, target_folder):
         """Verschiebe Datei in Zielordner und lerne dazu"""
@@ -345,9 +385,11 @@ pending_files = {}  # filename -> {path, suggestions, text_preview}
 class InboxHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
-            # Warte kurz, bis Datei vollständig geschrieben ist
-            time.sleep(1)
-            self.process_new_file(event.src_path)
+            # Warte, bis Datei vollständig geschrieben ist
+            if processor.wait_for_file_ready(event.src_path):
+                self.process_new_file(event.src_path)
+            else:
+                print(f"⚠️ Datei nicht vollständig geschrieben: {event.src_path}")
     
     def process_new_file(self, file_path):
         file_path = Path(file_path)

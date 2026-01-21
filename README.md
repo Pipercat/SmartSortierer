@@ -1,4 +1,4 @@
-# 📁 Smart Document Organizer - Mac mini Edition
+# 📁 Smart Document Organizer
 
 Lokales Ablage-System mit LLM-basierten Ordner-Vorschlägen.
 
@@ -10,14 +10,16 @@ Lokales Ablage-System mit LLM-basierten Ordner-Vorschlägen.
 
 Alles läuft **lokal** auf deinem Mac mini mit Ollama.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (lokal oder GitHub Codespaces)
 
 ```bash
-# 1. Setup ausführen
-./setup_mac.sh
+# 1. Dependencies installieren
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r NAS/requirements.txt
 
 # 2. System starten
-python3 document_organizer.py
+python3 NAS/document_organizer.py
 
 # 3. Web-UI öffnen
 open http://localhost:8080
@@ -43,9 +45,30 @@ open http://localhost:8080
 
 ## 🧠 LLM Requirements
 
-- **Ollama** mit `qwen2.5:7b-instruct` oder `qwen2.5:3b-instruct`
+- **Ollama** mit `qwen2.5:7b-instruct` oder `qwen2.5:3b-instruct` (Standard)
 - Läuft komplett lokal (keine Cloud)
 - Antwortet immer in strukturiertem JSON
+
+Optional kannst du das Modell und die URL über Umgebungsvariablen steuern:
+
+```bash
+export OLLAMA_URL="http://localhost:11434/api/generate"
+export OLLAMA_MODEL="qwen2.5:7b-instruct"
+export OLLAMA_TIMEOUT=30
+```
+
+## 📁 Projektstruktur
+
+```
+SmartSortierer/
+├── NAS/
+│   ├── document_organizer.py
+│   ├── requirements.txt
+│   ├── setup_mac.sh
+│   └── templates/
+│       └── index.html
+└── README.md
+```
 
 ## ⚡ Features
 
